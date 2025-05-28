@@ -9,7 +9,7 @@ import (
 func main() {
     r := gin.Default()
 
-    // Izinkan CORS untuk koneksi dari frontend React (port berbeda)
+    // Cors
     r.Use(func(c *gin.Context) {
         c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
         c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -23,5 +23,5 @@ func main() {
         })
     })
 
-    r.Run(":8080") // Backend berjalan di port 8080
+    r.Run(":8080")
 }
