@@ -16,6 +16,7 @@ function App() {
 
   const fetchStatistik = async () => {
     const res = await axios.get("http://localhost:8080/api/statistik");
+    // debug console.log("Data statistik terbaru:", res.data);
     setStatistik(res.data);
   };
 
@@ -24,12 +25,13 @@ function App() {
     if (!teks.trim()) return;
     await axios.post("http://localhost:8080/api/komentar", { teks });
     setTeks("");
-    fetchKomentar();
-    fetchStatistik();
+    await fetchKomentar();
+    await fetchStatistik();
   };
 
   const handleDelete = async (index) => {
-    await axios.delete("http://localhost:8080/api/komentar/${index}");
+    // Debug console.log("Menghapus komentar index ke:", index); 
+    await axios.delete(`http://localhost:8080/api/komentar/${index}`);
     fetchKomentar();
     fetchStatistik();
   };
