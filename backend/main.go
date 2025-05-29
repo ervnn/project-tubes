@@ -19,9 +19,9 @@ type InputKomentar struct {
 }
 
 type Statistik struct {
-	Positif int
-	Negatif int
-	Netral  int
+	Positif int `json:"positif"`
+	Negatif int `json:"negatif"`
+	Netral  int `json:"netral"`
 }
 
 var komentarList [100]Komentar
@@ -85,6 +85,7 @@ func statistikKomentar() Statistik {
 			net++
 		}
 	}
+	// debug fmt.Printf("Statistik saat ini: Positif=%d, Negatif=%d, Netral=%d\n", pos, neg, net)
 	return Statistik{
 		Positif: pos,
 		Negatif: neg,
@@ -100,6 +101,11 @@ func main() {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		c.Next()
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
 		c.Next()
 	})
 
