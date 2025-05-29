@@ -1,104 +1,135 @@
 package main
 
 import (
-	"net/http"
+	"fmt"
 	"strings"
+
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type Comment struct {
-	Text string `json:"text"`
+type Komentar struct {
+	Teks     string `json:"teks"`
+	Sentimen string `json:"sentimen"`
 }
 
-type Result struct {
-	Pesan string `json:"pesan"`
+type InputKomentar struct {
+	Teks string `json:"teks"`
 }
 
-var kataNegatif = [5]string{"jelek", "buruk", "gak suka", "parah", "benci"}
-var kataPositif = [5]string{"suka", "senang", "hebat", "mantap", "puas"}
-var kataMenarik = [5]string{"keren", "menarik", "bagus", "wow", "terbaik"}
-
-func prosedurCariNegatif(teks string, hasil *bool) {
-	for i := 0; i < len(kataNegatif); i++ {
-		if strings.Contains(teks, kataNegatif[i]) {
-			*hasil = true
-			return
-		}
-	}
-	*hasil = false
+type Statistik struct {
+	Positif int
+	Negatif int
+	Netral  int
 }
 
-func fungsiCariPositif(teks string) bool {
+var komentarList [100]Komentar
+var jumlahKomentar int
+
+var kataPositif = [10]string{"bagus", "hebat", "keren", "mantap", "terbaik", "cakep", "gacor", "kacaw", "nyeni", "menarik"}
+var kataNegatif = [10]string{"jelek", "buruk", "parah", "bodoh", "gagal", "bacot", "najis", "burik", "gembel", "nora"}
+
+func analisisSentimen(teks string) string {
+	teks = strings.ToLower(teks)
+	positif, negatif := 0, 0
+
 	for i := 0; i < len(kataPositif); i++ {
 		if strings.Contains(teks, kataPositif[i]) {
-			return true
+			positif++
 		}
 	}
-	return false
-}
 
-func fungsiCariMenarik(teks string) bool {
-	for i := 0; i < len(kataMenarik); i++ {
-		if strings.Contains(teks, kataMenarik[i]) {
-			return true
+	for i := 0; i < len(kataNegatif); i++ {
+		if strings.Contains(teks, kataNegatif[i]) {
+			negatif++
 		}
 	}
-	return false
+
+	if positif > negatif {
+		return "positif"
+	} else if negatif > positif {
+		return "negatif"
+	}
+	return "netral"
 }
 
-func prosedurTentukanHasil(neg, menarik, pos bool, hasil *string) {
-	if neg && menarik {
-		*hasil = "Komentar mengandung kata negatif dan juga menarik"
-	} else if neg {
-		*hasil = "Komentar negatif"
-	} else if menarik && pos {
-		*hasil = "Komentar positif dan menarik"
-	} else if menarik {
-		*hasil = "Komentar menarik"
-	} else if pos {
-		*hasil = "Komentar positif"
-	} else {
-		*hasil = "Komentar netral"
+func tambahKomentar(teks string) {
+	if jumlahKomentar < 100 {
+		komentarList[jumlahKomentar] = Komentar{
+			Teks:     teks,
+			Sentimen: analisisSentimen(teks),
+		}
+		jumlahKomentar++
+	}
+}
+
+func hapusKomentar(index int) {
+	if index >= 0 && index < jumlahKomentar {
+		for i := index; i < jumlahKomentar-1; i++ {
+			komentarList[i] = komentarList[i+1]
+		}
+		jumlahKomentar--
+	}
+}
+
+func statistikKomentar() Statistik {
+	pos, neg, net := 0, 0, 0
+	for i := 0; i < jumlahKomentar; i++ {
+		switch komentarList[i].Sentimen {
+		case "positif":
+			pos++
+		case "negatif":
+			neg++
+		default:
+			net++
+		}
+	}
+	return Statistik{
+		Positif: pos,
+		Negatif: neg,
+		Netral:  net,
 	}
 }
 
 func main() {
 	r := gin.Default()
 
-	// Cors
+	// CORS
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		c.Next()
 	})
 
-	r.GET("/api/message", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Halo dari backend Golang!",
-		})
+	r.GET("/api/komentar", func(c *gin.Context) {
+		komentarAktif := komentarList[:jumlahKomentar]
+		c.JSON(http.StatusOK, komentarAktif)
 	})
 
-	r.POST("/api/analyze", func(c *gin.Context) {
-		var komentar Comment
-		if err := c.ShouldBindJSON(&komentar); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Komentar tidak valid"})
+	r.POST("/api/komentar", func(c *gin.Context) {
+		var input InputKomentar
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Input tidak valid"})
 			return
 		}
+		tambahKomentar(input.Teks)
+		c.JSON(http.StatusOK, gin.H{"pesan": "Komentar ditambahkan"})
+	})
 
-		teks := strings.ToLower(komentar.Text)
+	r.DELETE("/api/komentar/:index", func(c *gin.Context) {
+		var index int
+		if _, err := fmt.Sscanf(c.Param("index"), "%d", &index); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Index tidak valid"})
+			return
+		}
+		hapusKomentar(index)
+		c.JSON(http.StatusOK, gin.H{"pesan": "Komentar dihapus"})
+	})
 
-		var isNegatif bool
-		prosedurCariNegatif(teks, &isNegatif)
-
-		isPositif := fungsiCariPositif(teks)
-		isMenarik := fungsiCariMenarik(teks)
-
-		var pesan string
-		prosedurTentukanHasil(isNegatif, isMenarik, isPositif, &pesan)
-
-		c.JSON(http.StatusOK, Result{Pesan: pesan})
+	r.GET("/api/statistik", func(c *gin.Context) {
+		c.JSON(http.StatusOK, statistikKomentar())
 	})
 
 	r.Run(":8080")
