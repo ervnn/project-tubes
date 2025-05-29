@@ -1,38 +1,73 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
 import axios from "axios";
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [teks, setTeks] = useState("");
+  const [komentar, setKomentar] = useState([]);
+  const [statistik, setStatistik] = useState({});
+
+  const fetchKomentar = async () => {
+    const res = await axios.get("http://localhost:8080/api/komentar");
+    setKomentar(res.data);
+  };
+
+  const fetchStatistik = async () => {
+    const res = await axios.get("http://localhost:8080/api/statistik");
+    setStatistik(res.data);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!teks.trim()) return;
+    await axios.post("http://localhost:8080/api/komentar", { teks });
+    setTeks("");
+    fetchKomentar();
+    fetchStatistik();
+  };
+
+  const handleDelete = async (index) => {
+    await axios.delete("http://localhost:8080/api/komentar/${index}");
+    fetchKomentar();
+    fetchStatistik();
+  };
 
   useEffect(() => {
-    axios
-      .get("/api/data")
-      .then((res) => setData(res.data))
-      .catch((err) => console.error(err));
+    fetchKomentar();
+    fetchStatistik();
   }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>count is {count}</button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">Click on the Vite and React logos to learn more</p>
-    </>
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
+      <h2>Input Komentar</h2>
+      <form onSubmit={handleSubmit}>
+        <input type="text" value={teks} onChange={(e) => setTeks(e.target.value)} placeholder="Tulis komentar..." style={{ width: "80%", padding: 8 }} />
+        <button type="submit" style={{ padding: 8, marginLeft: 8 }}>
+          Kirim
+        </button>
+      </form>
+
+      <h3 style={{ marginTop: 30 }}>Daftar Komentar</h3>
+      <ul>
+        {komentar.map((k, i) => (
+          <li key={i} style={{ marginBottom: 10 }}>
+            <strong>[{k.sentimen}]</strong> {k.teks}
+            <button onClick={() => handleDelete(i)} style={{ marginLeft: 10, color: "red" }}>
+              Hapus
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <h3>Statistik</h3>
+      <ul>
+        <li>Positif: {statistik.positif || 0}</li>
+        <li>Negatif: {statistik.negatif || 0}</li>
+        <li>Netral: {statistik.netral || 0}</li>
+      </ul>
+    </div>
   );
 }
 
