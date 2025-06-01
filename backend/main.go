@@ -24,6 +24,7 @@ type Statistik struct {
 	Netral  int `json:"netral"`
 }
 
+
 var komentarList [100]Komentar
 var jumlahKomentar int
 
@@ -85,7 +86,6 @@ func statistikKomentar() Statistik {
 			net++
 		}
 	}
-	// debug fmt.Printf("Statistik saat ini: Positif=%d, Negatif=%d, Netral=%d\n", pos, neg, net)
 	return Statistik{
 		Positif: pos,
 		Negatif: neg,
@@ -93,15 +93,76 @@ func statistikKomentar() Statistik {
 	}
 }
 
+func filterAndSortKomentar(search, sort string) []Komentar {
+	var filter [100]Komentar
+	count := 0
+
+	if search == "" {
+		for i := 0; i < jumlahKomentar; i++ {
+			filter[count] = komentarList[i]
+			count++
+		}
+	} else {
+		searchLower := strings.ToLower(search)
+		for i := 0; i < jumlahKomentar; i++ {
+			if strings.Contains(strings.ToLower(komentarList[i].Teks), searchLower) {
+				filter[count] = komentarList[i]
+				count++
+			}
+		}
+	}
+
+	if sort == "sentimen" {
+		ranking := func(s string) int {
+			switch s {
+			case "positif":
+				return 1
+			case "netral":
+				return 2
+			case "negatif":
+				return 3
+			default:
+				return 4
+			}
+		}
+
+		for i := 0; i < count-1; i++ {
+			minIdx := i
+			for j := i + 1; j < count; j++ {
+				if ranking(filter[j].Sentimen) < ranking(filter[minIdx].Sentimen) {
+					minIdx = j
+				}
+			}
+			if minIdx != i {
+				filter[i], filter[minIdx] = filter[minIdx], filter[i]
+			}
+		}
+
+	} else if sort == "panjang" {
+		for i := 1; i < count; i++ {
+			key := filter[i]
+			j := i - 1
+			for j >= 0 && len(filter[j].Teks) < len(key.Teks) {
+				filter[j+1] = filter[j]
+				j--
+			}
+			filter[j+1] = key
+		}
+	}
+
+	return filter[:count]
+}
+
+
 func main() {
 	r := gin.Default()
 
-	// CORS
+	// CORS 
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		c.Next()
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return
@@ -114,6 +175,7 @@ func main() {
 		c.JSON(http.StatusOK, komentarAktif)
 	})
 
+
 	r.POST("/api/komentar", func(c *gin.Context) {
 		var input InputKomentar
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -121,12 +183,15 @@ func main() {
 			return
 		}
 		tambahKomentar(input.Teks)
-		c.JSON(http.StatusOK, gin.H{"pesan": "Komentar ditambahkan"})
+		statistik := statistikKomentar()
+		c.JSON(http.StatusOK, gin.H{"pesan": "Komentar ditambahkan",
+		"statistik": statistik,})
 	})
 
 	r.DELETE("/api/komentar/:index", func(c *gin.Context) {
 		var index int
-		if _, err := fmt.Sscanf(c.Param("index"), "%d", &index); err != nil {
+		if _, err := fmt.Sscanf(c.Param("index"), "%d", &index);
+		err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Index tidak valid"})
 			return
 		}
@@ -137,6 +202,15 @@ func main() {
 	r.GET("/api/statistik", func(c *gin.Context) {
 		c.JSON(http.StatusOK, statistikKomentar())
 	})
+	
+	r.GET("/api/komentar/search", func(c *gin.Context) {
+  	  	keyword := c.Query("keyword")  
+    	sortOrder := c.Query("sort")    
+
+    	hasil := filterAndSortKomentar(keyword, sortOrder)
+    	c.JSON(http.StatusOK, hasil)
+	})
+
 
 	r.Run(":8080")
 }
