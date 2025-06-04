@@ -26,9 +26,9 @@ function KomentarPage() {
   try {
     const res = await axios.get('http://localhost:8080/api/statistik');
     setStatistik({
-      positif: res.data.Positif,
-      negatif: res.data.Negatif,
-      netral: res.data.Netral,
+      positif: res.data.positif,
+      negatif: res.data.negatif,
+      netral: res.data.netral,
     });
   } catch (error) {
     console.error('Gagal fetch statistik:', error);
@@ -56,16 +56,16 @@ function KomentarPage() {
     fetchStatistik();
   },[sort]);
 
-  useEffect(() => {
-    const handleRefresh = () => {
-      fetchKomentar();
-      fetchStatistik();
-    };
-    // window.addEventListener('refreshKomentar', handleRefresh);
-    // return () => {
-    //   window.removeEventListener('refreshKomentar', handleRefresh);
-    // };
-  }, []);
+  // useEffect(() => {
+  //   const handleRefresh = () => {
+  //     fetchKomentar();
+  //     fetchStatistik();
+  //   };
+  //   window.addEventListener('refreshKomentar', handleRefresh);
+  //   return () => {
+  //     window.removeEventListener('refreshKomentar', handleRefresh);
+  //   };
+  // }, []);
     
 
   return  (
